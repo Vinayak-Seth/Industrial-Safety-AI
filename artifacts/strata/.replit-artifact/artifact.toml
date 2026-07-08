@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Strata"
+version = "1.0.0"
+id = "artifacts/strata"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23439
+
+[services.development]
+run = "pnpm --filter @workspace/strata run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/strata", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/strata/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23439"
+BASE_PATH = "/"
