@@ -3,13 +3,29 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Strata — Unified Asset & Operations Brain API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: documents
+    description: Document ingestion & library
+  - name: knowledge-graph
+    description: Extracted entities and relationships
+  - name: compliance
+    description: Compliance gap detection agent
+  - name: maintenance
+    description: Maintenance work orders & RCA agent
+  - name: copilot
+    description: RAG copilot chat
+  - name: dashboard
+    description: Operations overview
+  - name: drawings
+    description: P&ID / engineering drawing digitization (computer vision)
+  - name: qms
+    description: Quality Management System export & sync integration
 paths:
   /healthz:
     get:
@@ -24,6 +40,463 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List documents
+      parameters:
+        - name: docType
+          in: query
+          schema:
+            $ref: "#/components/schemas/DocumentType"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/DocumentStatus"
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: createDocument
+      tags: [documents]
+      summary: Upload and ingest a document
+      description: >
+        Accepts a base64-encoded file payload, runs it through the ingestion
+        pipeline (OCR / vision extraction, chunking, entity extraction) and
+        returns the created document. Processing happens synchronously.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document with its chunks and extracted entities
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /knowledge-graph:
+    get:
+      operationId: getKnowledgeGraph
+      tags: [knowledge-graph]
+      summary: Get the full knowledge graph (nodes + edges)
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            $ref: "#/components/schemas/EntityType"
+      responses:
+        "200":
+          description: Knowledge graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeGraph"
+
+  /entities/{id}:
+    get:
+      operationId: getEntity
+      tags: [knowledge-graph]
+      summary: Get a single entity with its relations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Entity detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /compliance/rules:
+    get:
+      operationId: listComplianceRules
+      tags: [compliance]
+      summary: List extracted compliance rules
+      responses:
+        "200":
+          description: List of compliance rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComplianceRule"
+
+  /compliance/gaps:
+    get:
+      operationId: listComplianceGaps
+      tags: [compliance]
+      summary: List detected compliance gaps
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ComplianceGapStatus"
+        - name: severity
+          in: query
+          schema:
+            $ref: "#/components/schemas/ComplianceSeverity"
+      responses:
+        "200":
+          description: List of compliance gaps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComplianceGap"
+
+  /compliance/gaps/{id}:
+    patch:
+      operationId: updateComplianceGap
+      tags: [compliance]
+      summary: Update a compliance gap's status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComplianceGapUpdate"
+      responses:
+        "200":
+          description: Updated gap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceGap"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /compliance/scan:
+    post:
+      operationId: runComplianceScan
+      tags: [compliance]
+      summary: Run the compliance-gap detection agent across ingested documents
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceScanResult"
+
+  /maintenance/work-orders:
+    get:
+      operationId: listWorkOrders
+      tags: [maintenance]
+      summary: List maintenance work orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorkOrderStatus"
+      responses:
+        "200":
+          description: List of work orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkOrder"
+
+  /maintenance/rca:
+    get:
+      operationId: listRcaInsights
+      tags: [maintenance]
+      summary: List generated root-cause analysis insights
+      responses:
+        "200":
+          description: List of RCA insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RcaInsight"
+
+  /maintenance/rca/generate:
+    post:
+      operationId: generateRcaInsights
+      tags: [maintenance]
+      summary: Run the RCA agent over open/unresolved work orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RcaGenerateInput"
+      responses:
+        "200":
+          description: Generated RCA insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RcaInsight"
+
+  /copilot/query:
+    post:
+      operationId: queryCopilot
+      tags: [copilot]
+      summary: Ask the RAG copilot a question grounded in ingested documents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CopilotQueryInput"
+      responses:
+        "200":
+          description: Answer with citations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotQuery"
+
+  /copilot/history:
+    get:
+      operationId: listCopilotHistory
+      tags: [copilot]
+      summary: List past copilot queries
+      responses:
+        "200":
+          description: List of past queries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CopilotQuery"
+
+  /drawings:
+    get:
+      operationId: listDrawings
+      tags: [drawings]
+      summary: List digitized P&ID / engineering drawings
+      responses:
+        "200":
+          description: List of drawings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PidDrawing"
+    post:
+      operationId: createDrawing
+      tags: [drawings]
+      summary: Upload a P&ID / engineering drawing and digitize it via computer vision
+      description: >
+        Accepts a base64-encoded drawing image (or PDF), runs it through a Gemini
+        vision digitization pass (OCR tag reading + symbol classification + line
+        tracing), and returns the created drawing record. Processing happens
+        synchronously.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DrawingInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PidDrawing"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /drawings/{id}:
+    get:
+      operationId: getDrawing
+      tags: [drawings]
+      summary: Get a digitized drawing with its extracted components and connections
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Drawing detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PidDrawingDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDrawing
+      tags: [drawings]
+      summary: Delete a digitized drawing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /qms/export:
+    get:
+      operationId: getQmsExport
+      tags: [qms]
+      summary: Preview the QMS-formatted export payload (nonconformance/CAPA records)
+      responses:
+        "200":
+          description: QMS export payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QmsExport"
+
+  /qms/sync:
+    post:
+      operationId: syncToQms
+      tags: [qms]
+      summary: Push the current QMS export payload to an external QMS webhook (or simulate it)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncToQmsInput"
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QmsSyncResult"
+
+  /qms/logs:
+    get:
+      operationId: listQmsSyncLog
+      tags: [qms]
+      summary: List past QMS sync attempts
+      responses:
+        "200":
+          description: Sync log history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QmsSyncLog"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get the operations overview summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +507,454 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    DocumentType:
+      type: string
+      enum:
+        - safety_procedure
+        - equipment_manual
+        - inspection_report
+        - regulation
+        - maintenance_record
+        - other
+
+    DocumentStatus:
+      type: string
+      enum:
+        - processing
+        - ready
+        - failed
+
+    Document:
+      type: object
+      required:
+        [id, title, docType, status, fileName, mimeType, summary, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        docType:
+          $ref: "#/components/schemas/DocumentType"
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        fileName: { type: string }
+        mimeType: { type: string }
+        summary: { type: ["string", "null"] }
+        processingError: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    DocumentChunk:
+      type: object
+      required: [id, documentId, chunkIndex, content]
+      properties:
+        id: { type: integer }
+        documentId: { type: integer }
+        chunkIndex: { type: integer }
+        content: { type: string }
+
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          required: [extractedText, chunks, entities]
+          properties:
+            extractedText: { type: ["string", "null"] }
+            chunks:
+              type: array
+              items:
+                $ref: "#/components/schemas/DocumentChunk"
+            entities:
+              type: array
+              items:
+                $ref: "#/components/schemas/Entity"
+
+    DocumentInput:
+      type: object
+      required: [title, docType, fileName, mimeType, fileBase64]
+      properties:
+        title: { type: string, minLength: 1 }
+        docType:
+          $ref: "#/components/schemas/DocumentType"
+        fileName: { type: string, minLength: 1 }
+        mimeType: { type: string, minLength: 1 }
+        fileBase64: { type: string, minLength: 1 }
+
+    EntityType:
+      type: string
+      enum:
+        - equipment
+        - procedure
+        - regulation
+        - personnel
+        - location
+        - hazard
+        - parameter
+
+    Entity:
+      type: object
+      required: [id, entityType, name, description, documentId]
+      properties:
+        id: { type: integer }
+        entityType:
+          $ref: "#/components/schemas/EntityType"
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        documentId: { type: ["integer", "null"] }
+
+    EntityRelation:
+      type: object
+      required: [id, sourceEntityId, targetEntityId, relationType]
+      properties:
+        id: { type: integer }
+        sourceEntityId: { type: integer }
+        targetEntityId: { type: integer }
+        relationType: { type: string }
+        description: { type: ["string", "null"] }
+
+    EntityDetail:
+      allOf:
+        - $ref: "#/components/schemas/Entity"
+        - type: object
+          required: [outgoingRelations, incomingRelations]
+          properties:
+            outgoingRelations:
+              type: array
+              items:
+                $ref: "#/components/schemas/EntityRelation"
+            incomingRelations:
+              type: array
+              items:
+                $ref: "#/components/schemas/EntityRelation"
+
+    KnowledgeGraph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entity"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityRelation"
+
+    ComplianceRule:
+      type: object
+      required: [id, title, description, category, sourceDocumentId, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        category: { type: string }
+        sourceDocumentId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    ComplianceSeverity:
+      type: string
+      enum: [critical, high, medium, low]
+
+    ComplianceGapStatus:
+      type: string
+      enum: [open, resolved]
+
+    ComplianceGap:
+      type: object
+      required:
+        [id, ruleId, ruleTitle, severity, status, description, recommendation, documentId, createdAt]
+      properties:
+        id: { type: integer }
+        ruleId: { type: integer }
+        ruleTitle: { type: string }
+        severity:
+          $ref: "#/components/schemas/ComplianceSeverity"
+        status:
+          $ref: "#/components/schemas/ComplianceGapStatus"
+        description: { type: string }
+        recommendation: { type: string }
+        documentId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    ComplianceGapUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/ComplianceGapStatus"
+
+    ComplianceScanResult:
+      type: object
+      required: [rulesEvaluated, documentsScanned, gapsFound, gaps]
+      properties:
+        rulesEvaluated: { type: integer }
+        documentsScanned: { type: integer }
+        gapsFound: { type: integer }
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceGap"
+
+    WorkOrderStatus:
+      type: string
+      enum: [open, in_progress, completed]
+
+    WorkOrderPriority:
+      type: string
+      enum: [low, medium, high, critical]
+
+    WorkOrder:
+      type: object
+      required:
+        [id, equipmentName, description, status, priority, reportedDate, documentId, createdAt]
+      properties:
+        id: { type: integer }
+        equipmentName: { type: string }
+        description: { type: string }
+        status:
+          $ref: "#/components/schemas/WorkOrderStatus"
+        priority:
+          $ref: "#/components/schemas/WorkOrderPriority"
+        reportedDate: { type: string, format: date }
+        resolvedDate: { type: ["string", "null"], format: date }
+        documentId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    RcaInsight:
+      type: object
+      required:
+        [id, workOrderId, equipmentName, title, rootCause, contributingFactors, recommendations, createdAt]
+      properties:
+        id: { type: integer }
+        workOrderId: { type: ["integer", "null"] }
+        equipmentName: { type: string }
+        title: { type: string }
+        rootCause: { type: string }
+        contributingFactors:
+          type: array
+          items: { type: string }
+        recommendations:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    RcaGenerateInput:
+      type: object
+      properties:
+        workOrderId: { type: integer }
+
+    CopilotCitation:
+      type: object
+      required: [documentId, documentTitle, chunkIndex, excerpt]
+      properties:
+        documentId: { type: integer }
+        documentTitle: { type: string }
+        chunkIndex: { type: integer }
+        excerpt: { type: string }
+
+    CopilotQueryInput:
+      type: object
+      required: [question]
+      properties:
+        question: { type: string, minLength: 1 }
+
+    CopilotQuery:
+      type: object
+      required: [id, question, answer, citations, responseTimeMs, createdAt]
+      properties:
+        id: { type: integer }
+        question: { type: string }
+        answer: { type: string }
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopilotCitation"
+        responseTimeMs: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    DocTypeCount:
+      type: object
+      required: [docType, count]
+      properties:
+        docType:
+          $ref: "#/components/schemas/DocumentType"
+        count: { type: integer }
+
+    PidDrawingStatus:
+      type: string
+      enum: [processing, ready, failed]
+
+    PidComponentType:
+      type: string
+      enum: [valve, pump, vessel, compressor, instrument, sensor, pipe_segment, other]
+
+    PidDrawing:
+      type: object
+      required: [id, title, status, fileName, mimeType, summary, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status:
+          $ref: "#/components/schemas/PidDrawingStatus"
+        fileName: { type: string }
+        mimeType: { type: string }
+        summary: { type: ["string", "null"] }
+        processingError: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    PidComponent:
+      type: object
+      required: [id, drawingId, tag, componentType, label, description]
+      properties:
+        id: { type: integer }
+        drawingId: { type: integer }
+        tag: { type: string }
+        componentType:
+          $ref: "#/components/schemas/PidComponentType"
+        label: { type: string }
+        description: { type: ["string", "null"] }
+
+    PidConnection:
+      type: object
+      required: [id, drawingId, fromComponentId, toComponentId, lineType, description]
+      properties:
+        id: { type: integer }
+        drawingId: { type: integer }
+        fromComponentId: { type: integer }
+        toComponentId: { type: integer }
+        lineType: { type: string }
+        description: { type: ["string", "null"] }
+
+    PidDrawingDetail:
+      allOf:
+        - $ref: "#/components/schemas/PidDrawing"
+        - type: object
+          required: [components, connections]
+          properties:
+            components:
+              type: array
+              items:
+                $ref: "#/components/schemas/PidComponent"
+            connections:
+              type: array
+              items:
+                $ref: "#/components/schemas/PidConnection"
+
+    DrawingInput:
+      type: object
+      required: [title, fileName, mimeType, fileBase64]
+      properties:
+        title: { type: string, minLength: 1 }
+        fileName: { type: string, minLength: 1 }
+        mimeType: { type: string, minLength: 1 }
+        fileBase64: { type: string, minLength: 1 }
+
+    QmsFindingType:
+      type: string
+      enum: [nonconformance, corrective_action]
+
+    QmsExportRecord:
+      type: object
+      required:
+        [externalId, source, findingType, title, severity, description, correctiveAction, detectedAt]
+      properties:
+        externalId: { type: string }
+        source: { type: string }
+        findingType:
+          $ref: "#/components/schemas/QmsFindingType"
+        title: { type: string }
+        severity: { type: string }
+        description: { type: string }
+        correctiveAction: { type: ["string", "null"] }
+        detectedAt: { type: string, format: date-time }
+
+    QmsExport:
+      type: object
+      required: [exportedAt, schemaVersion, records]
+      properties:
+        exportedAt: { type: string, format: date-time }
+        schemaVersion: { type: string }
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/QmsExportRecord"
+
+    SyncToQmsInput:
+      type: object
+      properties:
+        targetUrl: { type: string, minLength: 1 }
+
+    QmsSyncType:
+      type: string
+      enum: [compliance_gaps, work_orders]
+
+    QmsSyncStatus:
+      type: string
+      enum: [success, failed]
+
+    QmsSyncLog:
+      type: object
+      required: [id, syncType, targetUrl, recordCount, status, responseSnippet, createdAt]
+      properties:
+        id: { type: integer }
+        syncType:
+          $ref: "#/components/schemas/QmsSyncType"
+        targetUrl: { type: ["string", "null"] }
+        recordCount: { type: integer }
+        status:
+          $ref: "#/components/schemas/QmsSyncStatus"
+        responseSnippet: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    QmsSyncResult:
+      allOf:
+        - $ref: "#/components/schemas/QmsSyncLog"
+        - type: object
+          required: [export]
+          properties:
+            export:
+              $ref: "#/components/schemas/QmsExport"
+
+    DashboardSummary:
+      type: object
+      required:
+        [
+          documentCount,
+          entityCount,
+          relationCount,
+          openComplianceGaps,
+          criticalComplianceGaps,
+          openWorkOrders,
+          rcaInsightCount,
+          copilotQueryCount,
+          docTypeBreakdown,
+          recentQueries,
+          recentGaps,
+        ]
+      properties:
+        documentCount: { type: integer }
+        entityCount: { type: integer }
+        relationCount: { type: integer }
+        openComplianceGaps: { type: integer }
+        criticalComplianceGaps: { type: integer }
+        openWorkOrders: { type: integer }
+        rcaInsightCount: { type: integer }
+        copilotQueryCount: { type: integer }
+        docTypeBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocTypeCount"
+        recentQueries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CopilotQuery"
+        recentGaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceGap"
