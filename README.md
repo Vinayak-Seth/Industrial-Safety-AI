@@ -110,4 +110,5 @@ pnpm --filter @workspace/strata run dev
 
 ## License
 
-MIT
+This project is open-source for learning and portfolio use. No commercial usage allowed without permission.
+
