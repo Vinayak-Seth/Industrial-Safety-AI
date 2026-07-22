@@ -2,6 +2,7 @@
 
 Strata is a unified **asset & operations brain** for industrial teams. It ingests plant documents (SOPs, manuals, inspection reports, regulations, maintenance logs) and turns them into a searchable knowledge graph, a grounded Q&A copilot, automated compliance gap scans, and AI-assisted root-cause analysis for maintenance.
 
+Live Link: https://industrial-safety-ai--ganshyamrox.replit.app/
 ## Features
 
 - **Documents / Library** — Upload plant documents; each is auto-summarized, chunked, and has entities, relations, and compliance rules extracted via Gemini.
