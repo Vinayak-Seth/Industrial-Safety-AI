@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Strata"
+title = "Industrial-Safety-AI"
 version = "1.0.0"
 id = "artifacts/strata"
 router = "path"
